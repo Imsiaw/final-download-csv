@@ -1,62 +1,34 @@
-const axios = require("axios");
 const fs = require("fs");
-const { updateLine } = require("../utils/updateLine.js");
-const fsPromisify = require("fs/promises");
-const { config } = require("../config/index.js");
+const axios = require("axios");
+const { config } = require("./config/index.js");
 
-const updateCsv = async (req, res) => {
-  const { CSV_DOWNLOAD_URL, CSV_PATH, CSV_UPDATE_PATH } = config;
+const { CSV_PATH, CSV_UPDATE_PATH } = config;
 
-  try {
-    await fsPromisify.unlink(CSV_UPDATE_PATH);
-  } catch (err) {
-    console.error(err);
-  }
+fs.unlink(CSV_UPDATE_PATH, (err) => {
+  console.log(err);
+  const url =
+    "https://nc-aftermarket-www-production.s3.amazonaws.com/reports/Namecheap_Market_Sales.csv";
   const writer = fs.createWriteStream(CSV_UPDATE_PATH);
-
-  let responseFinished = false;
-
-  res.on("close", () => {
-    if (!responseFinished) {
-      writer.destroy();
-    }
-  });
-
+  console.log("Updating Csv File...");
   axios({
-    url: CSV_DOWNLOAD_URL,
+    url,
     method: "GET",
     responseType: "stream",
   })
     .then((resp) => {
-      const totalLen = resp.headers["content-length"];
-      let downloadLen = 0;
-      resp.data.on("data", (chunk) => {
-        downloadLen += chunk.length;
-        const progress = Math.round((downloadLen / totalLen) * 100);
-        updateLine(`${progress}%`);
-        if (!responseFinished) {
-          res.write(JSON.stringify({ progress }));
-        }
-      });
+      console.log("Response Reached... \nStart Downloading");
       resp.data.pipe(writer);
     })
     .catch((err) => {
       console.error(err);
-      res.status(500).send("Error");
     });
   writer.on("finish", () => {
     fs.rename(CSV_UPDATE_PATH, CSV_PATH, (_error) => {
       if (_error) {
-        console.error(_error);
+        console.error(`Error : ${_error}`);
+        return;
       }
-      if (!responseFinished) {
-        res.end("Download finish");
-      }
+      console.log("Finish.");
     });
   });
-  res.on("finish", () => {
-    responseFinished = true;
-  });
-};
-
-module.exports = { updateCsv };
+});
