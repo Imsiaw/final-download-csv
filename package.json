@@ -4,8 +4,8 @@
   "description": "",
   "main": "server.js",
   "scripts": {
-    "server:dev": "nodemon server.js",
-    "server:build": "node server.js",
+    "server:dev": "nodemon index.js",
+    "server:build": "node index.js",
     "start": "npm run server:build",
     "update": "node src/update.js"
   },
